@@ -21,7 +21,7 @@ More examples, including illustrations of the official STE rules themselves, in 
 
 ## What This Skill Does
 
-1. Picks a mode. **Strict** covers procedures, error messages, and tool descriptions. **STE-flavored** covers READMEs, PR descriptions, and explanatory prose. STE-flavored keeps the sentence discipline but not the fixed-vocabulary lockdown.
+1. Picks a mode. **Strict** covers procedures, error messages, and tool descriptions. **STE-flavored** covers READMEs, PR descriptions, and explanatory prose. STE-flavored keeps the sentence discipline but not the fixed-vocabulary lockdown. **Warm** covers plain text that people read and act on: patient information, help text, notifications, and messages. Warm keeps the clarity rules and adds a calm, human voice: "you", a reassurance where the source supports it, a short reason, the everyday word first, and no needless fear words. A real, serious risk stays plain. See [`examples/warm-mode.md`](examples/warm-mode.md).
 2. Reads the input English text for meaning.
 3. Flags every rule violation sentence-by-sentence: ambiguous word choice, present-perfect/complex tense, passive voice with an unclear actor, multi-instruction sentences, oversized noun clusters, dropped words, sentences over length, phrasal verbs, nominalized actions, semicolons, hedge stacks, and marketing adjectives.
 4. Rewrites each flagged sentence — without dropping any fact, condition, or scope qualifier from the original. If a shorter phrasing would lose required precision, it keeps the longer phrasing and flags the trade-off instead of silently simplifying.
@@ -35,9 +35,11 @@ The linter checks structural patterns only. It does not compare an original text
 
 The deterministic linter checks semicolons, a short list of soft phrasal verbs (spin up, reach out, dive into, kick off, circle back, touch base), nominalizations, marketing adjectives, passive voice, present-perfect forms (including irregular participles such as "has run"), long sentences, synonym rotation, and dangling conjunctions in supported list items. It does not check noun-cluster length (that needs part-of-speech tagging) and it does not know phrasal verbs outside its list, so "take off the panel" passes. It never flags hedges or modality.
 
+With `--mode warm`, the linter applies the same hard rules at the same places. It does not report present perfect, which is natural and exact in text for people ("if you have already paid"). It adds an advisory `fear-word` rule for words such as "fatal", "toxic", "dangerous", and "severe", and names a calmer word for each. A fear word never fails the run, because a real risk sometimes needs it. The default mode is `strict`, which behaves exactly as before.
+
 For the sentence-length check, a word is a whitespace-separated token with at least one letter or digit. Inline code in single backticks, list markers, blockquote markers, and bare punctuation such as a spaced em dash are not words.
 
-The repo's own prose does not lint clean: the rule tables quote the patterns they forbid, and some sentences run long. Lint it with `python scripts/ste-lint.py --baseline 36 SKILL.md` and read the findings as examples, not defects.
+The repo's own prose does not lint clean: the rule tables quote the patterns they forbid, and some sentences run long. Lint it with `python scripts/ste-lint.py --baseline 37 SKILL.md` and read the findings as examples, not defects.
 
 The dangling-conjunction rule checks list markers at the start of a line with zero to three leading spaces and ASCII spaces after the marker. It supports unordered markers `-`, `*`, and `+`, and ordered numeric markers that end in `.` or `)`, such as `1.` or `1)`. It checks indented continuation lines up to the final meaningful line. It does not parse list syntax inside blockquotes, lazy continuation, or full nested-list semantics. A standalone line with four or more leading spaces is not treated as a list marker. Within an active list item, indentation at the computed content column is treated as continuation text. Fence detection follows the linter's existing simple rule: a stripped line beginning with three backticks or three tildes toggles the fence state.
 
@@ -77,6 +79,7 @@ Trigger with a request to simplify or clarify English text:
 Disambiguate this tool description
 Rewrite this error message so an agent can't misparse it
 Apply ASD-STE100 to this instruction
+Rewrite this patient leaflet in warm mode
 ```
 
 Or paste text and ask Claude to "disambiguate this" / "apply STE100 to this" / "reduce ambiguity in this output."
@@ -85,7 +88,7 @@ You get the rewritten text back and nothing else. To see which rules were applie
 
 ## Scope
 
-Built for: agent-to-agent messages, tool/function descriptions, error messages, system prompts, inter-agent instructions — any English text a machine or non-native reader has to parse without a human to ask.
+Built for: agent-to-agent messages, tool/function descriptions, error messages, system prompts, inter-agent instructions — any English text a machine or non-native reader has to parse without a human to ask. In warm mode, also plain text that people read and act on, such as patient information, help text, and messages.
 
 Not built for: creative writing, marketing copy, or anything where voice and nuance are the point — STE is deliberately flat and literal by design.
 
