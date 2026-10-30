@@ -10,10 +10,16 @@ Usage:
     echo "text" | ste-lint.py [--json]
     ste-lint.py --baseline 5 FILE      # pass unless hard violations exceed 5
     ste-lint.py --disable passive-voice,present-perfect FILE
+    ste-lint.py --mode warm FILE       # plain text that people read
     ste-lint.py --selftest
 
+Modes: strict (the default) applies the rules below as they always were. Warm
+is for plain text that people read, such as patient information, help text
+and messages. It keeps every hard rule, adds an advisory fear-word check and
+drops the present-perfect check (see MODES).
+
 Exit 1 when hard ("advisory-free") violations exceed the baseline (default 0).
-Advisory findings (passive voice, compound tenses) never fail the run.
+Advisory findings (passive voice, compound tenses, fear words) never fail the run.
 Exit 2 on a usage error (unknown flag, bad value, unknown rule, unreadable file).
 """
 import argparse
@@ -76,6 +82,34 @@ SYNONYM_GROUPS = [
     ("get", "retrieve", "fetch", "obtain"),
     ("change", "modify", "alter"),
 ]
+
+# Warm mode only: words that frighten more than the facts warrant when they are
+# used loosely, each with a calmer choice. Advisory, never hard: a real and
+# serious risk must still be said plainly, together with what to do.
+FEAR_WORDS = [
+    (r"deadly|lethal|fatal(?:ly)?|life[- ]threatening", "'serious', and say what to do"),
+    (r"toxic|poison(?:s|ed|ous|ing)?", "'harmful', or 'too much'"),
+    (r"dangerous(?:ly)?|hazardous", "'harmful', or name the harm"),
+    (r"severe(?:ly)?", "'very bad', or name the sign"),
+    (r"alarming|frightening|terrifying|horrifying|horrific|scary", "say what happens, in plain words"),
+    (r"catastrophic|devastating|disastrous", "'serious'"),
+    (r"agoni[sz]ing|excruciating|unbearable", "'very painful'"),
+    (r"crippling|debilitating", "say what it stops a person from doing"),
+    (r"suffer(?:s|ed|ing)?|sufferers?|victims?", "'have', or 'a person with'"),
+    (r"critical(?:ly)?", "'important', or 'serious'"),
+]
+FEAR_WORD_PATTERNS = [(re.compile(r"\b(?:" + words + r")\b", re.I), calmer)
+                      for words, calmer in FEAR_WORDS]
+
+# What each mode adds to and drops from the rules above. Strict is the
+# standard as this linter always applied it. Warm is for plain text that
+# people read. It keeps every hard rule. It adds the fear-word check. It drops
+# the present-perfect check, because in such text that tense is natural and
+# exact ("after your sugar has returned to normal").
+MODES = {
+    "strict": {"add": frozenset(), "drop": frozenset()},
+    "warm": {"add": frozenset({"fear-word"}), "drop": frozenset({"present-perfect"})},
+}
 
 MAX_WORDS = 25  # descriptions cap; instructions cap is 20 but undetectable without context
 
@@ -339,7 +373,8 @@ def _dangling_conjunction_findings(text, filename):
     return findings
 
 
-def lint(text, filename="<stdin>"):
+def lint(text, filename="<stdin>", mode="strict"):
+    added, dropped = MODES[mode]["add"], MODES[mode]["drop"]
     findings = []
     words_total = 0
     in_fence = False
@@ -408,6 +443,18 @@ def lint(text, filename="<stdin>"):
                                      "col": source_column + m.start() + 1,
                                      "rule": rule_id, "level": level,
                                      "match": m.group(0), "message": msg})
+            if "fear-word" in added:
+                for pattern, calmer in FEAR_WORD_PATTERNS:
+                    for m in pattern.finditer(line):
+                        findings.append({
+                            "file": filename, "line": lineno,
+                            "col": source_column + m.start() + 1,
+                            "rule": "fear-word", "level": "advisory",
+                            "match": m.group(0),
+                            "message": f"'{m.group(0)}' can frighten more than the facts "
+                                       f"warrant. A calmer choice: {calmer}. Keep the word "
+                                       "when it names a real, serious risk or an exact "
+                                       "medical term."})
             for gi, group in enumerate(SYNONYM_GROUPS):
                 for base in group:
                     if (gi, base) in seen_synonyms:
@@ -441,6 +488,7 @@ def lint(text, filename="<stdin>"):
                                  "match": match,
                                  "message": f"'{base}' and '{first_base}' name the same action. Pick one and use it every time."})
     findings.extend(_dangling_conjunction_findings(text, filename))
+    findings = [f for f in findings if f["rule"] not in dropped]
     findings.sort(key=lambda f: (f["line"], f["col"]))
     return findings, words_total
 
@@ -723,7 +771,7 @@ def selftest():
 
 
 RULE_IDS = {rule_id for rule_id, *_ in RULES} | {
-    "long-sentence", "synonym-rotation", "dangling-conjunction"}
+    "long-sentence", "synonym-rotation", "dangling-conjunction", "fear-word"}
 
 
 def _rule_list(value):
@@ -757,6 +805,9 @@ def main(argv):
                         help="pass unless hard violations exceed N (default 0)")
     parser.add_argument("--disable", type=_rule_list, default=set(), metavar="RULES",
                         help="comma-separated rule IDs to silence")
+    parser.add_argument("--mode", choices=sorted(MODES), default="strict",
+                        help="strict (default) for procedures, error messages and agent "
+                             "text; warm for plain text that people read")
     parser.add_argument("--selftest", action="store_true", help="run the built-in tests")
     # intermixed parsing keeps flags valid between file paths
     args = parser.parse_intermixed_args(argv)
@@ -773,11 +824,11 @@ def main(argv):
                     text = fh.read()
             except OSError as e:
                 parser.error(f"cannot read {p}: {e.strerror}")
-            f, w = lint(text, filename=p)
+            f, w = lint(text, filename=p, mode=args.mode)
             findings.extend(f)
             words_total += w
     else:
-        findings, words_total = lint(sys.stdin.read())
+        findings, words_total = lint(sys.stdin.read(), mode=args.mode)
 
     findings = [f for f in findings if f["rule"] not in disabled]
     hard_count = sum(1 for f in findings if f["level"] == "advisory-free")
