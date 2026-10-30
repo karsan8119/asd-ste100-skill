@@ -756,9 +756,67 @@ def selftest():
         with contextlib.redirect_stdout(out):
             assert main([paths[0], "--json", paths[1]]) == 0
         assert json.loads(out.getvalue())["words"] == 6, out.getvalue()
+    # warm mode keeps every hard rule of strict mode, at the same places
+    hard_text = ("The panel is removed; spin up the job. "
+                 "Perform an analysis of the seamless log.\n"
+                 + " ".join(["word"] * 26) + ".\n"
+                 "Check the file. Verify the output.\n\n- Start the task and")
+    strict_hard = [(f["line"], f["col"], f["rule"]) for f in lint(hard_text)[0]
+                   if f["level"] == "advisory-free"]
+    warm_hard = [(f["line"], f["col"], f["rule"]) for f in lint(hard_text, mode="warm")[0]
+                 if f["level"] == "advisory-free"]
+    assert warm_hard == strict_hard, (strict_hard, warm_hard)
+    assert {rule for *_, rule in warm_hard} == {
+        "semicolon", "phrasal-verb", "nominalization", "marketing-adjective",
+        "long-sentence", "synonym-rotation", "dangling-conjunction"}, warm_hard
+    # strict is the default, and passing it changes nothing
+    assert lint(hard_text, mode="strict") == lint(hard_text)
+    # warm mode: a calm reassurance and plain everyday words raise nothing
+    for calm in ("This is common and usually settles in a few days.",
+                 "Take it with food, because food can ease an upset stomach.",
+                 "You may feel sick at first. This usually passes."):
+        findings, _ = lint(calm, mode="warm")
+        assert findings == [], (calm, findings)
+    # hedges stay unflagged in warm mode too
+    findings, _ = lint("The request may have failed. It could be a timeout.", mode="warm")
+    assert findings == [], findings
+    # warm mode drops present perfect; strict still reports it
+    text = "Wait until your sugar has returned to normal."
+    assert any(f["rule"] == "present-perfect" for f in lint(text)[0])
+    assert not any(f["rule"] == "present-perfect" for f in lint(text, mode="warm")[0])
+    # passive voice stays advisory in warm mode
+    findings, _ = lint("The tablet is taken with food.", mode="warm")
+    assert [(f["rule"], f["level"]) for f in findings] == [("passive-voice", "advisory")], findings
+    # fear words are advisory in warm mode and never reported in strict mode
+    text = "An overdose can be fatal. The rash looks dangerous. Some people suffer from asthma."
+    fear = [f for f in lint(text, mode="warm")[0] if f["rule"] == "fear-word"]
+    assert [f["match"] for f in fear] == ["fatal", "dangerous", "suffer"], fear
+    assert all(f["level"] == "advisory" for f in fear), fear
+    assert "'serious'" in fear[0]["message"] and "'have'" in fear[2]["message"], fear
+    assert not any(f["rule"] == "fear-word" for f in lint(text)[0])
+    # fear words match whole words only, never inside code
+    findings, _ = lint("Unpoisoned data, a severity score and the `--fatal` flag.", mode="warm")
+    assert not any(f["rule"] == "fear-word" for f in findings), findings
+    findings, _ = lint("A life-threatening reaction. SEVERELY ill. Toxic.", mode="warm")
+    assert [f["match"] for f in findings if f["rule"] == "fear-word"] == [
+        "life-threatening", "SEVERELY", "Toxic"], findings
+    # a fear word alone never fails the run, and --disable silences it
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "warm.md")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("This can be fatal.\n")
+        for argv, count in (([path, "--mode", "warm", "--json"], 1),
+                            ([path, "--mode", "warm", "--json", "--disable", "fear-word"], 0),
+                            ([path, "--json"], 0)):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                assert main(argv) == 0, argv
+            report_json = json.loads(out.getvalue())
+            assert (report_json["count"], report_json["hard_count"]) == (count, 0), (argv, out.getvalue())
     # command-line parsing rejects typos and bad values
     for bad in (["--basline", "3"], ["--baseline"], ["--baseline", "x"],
-                ["--baseline", "-1"], ["--disable", "passive"], ["--base", "3"]):
+                ["--baseline", "-1"], ["--disable", "passive"], ["--base", "3"],
+                ["--mode", "friendly"], ["--mode"]):
         try:
             with contextlib.redirect_stderr(io.StringIO()):
                 main(bad)
@@ -767,6 +825,7 @@ def selftest():
         else:
             raise AssertionError(bad)
     assert _rule_list("passive-voice,present-perfect") == {"passive-voice", "present-perfect"}
+    assert _rule_list("fear-word") == {"fear-word"}
     print("selftest OK")
 
 
