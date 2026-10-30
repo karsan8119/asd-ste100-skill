@@ -1,7 +1,7 @@
 ---
 name: asd-ste100
-description: "Use when English text must be parsed without a human to resolve ambiguity — tool descriptions, error messages, inter-agent instructions, system prompts, status reports — and misreading has a real cost, or when text reads as dense, hedged, or easy to misparse. Triggers: disambiguate, STE100 rewrite, apply Simplified Technical English, plain-language rewrite, controlled-language rewrite, rewrite so an agent cannot misread this. Not for creative or marketing copy."
-version: 0.4.0
+description: "Use when English text must be parsed without a human to resolve ambiguity — tool descriptions, error messages, inter-agent instructions, system prompts, status reports — and misreading has a real cost, or when text reads as dense, hedged, or easy to misparse. Its warm mode is for plain text that people read and act on: patient information, help text, notifications, messages. Warm text stays clear without sounding cold or alarming. Triggers: disambiguate, STE100 rewrite, apply Simplified Technical English, plain-language rewrite, controlled-language rewrite, rewrite so an agent cannot misread this, warm mode, friendly rewrite. Not for creative or marketing copy."
+version: 0.5.0
 ---
 
 # Simplified Technical English (ASD-STE100)
@@ -16,10 +16,11 @@ This skill borrows that same discipline for a different reader: an **AI agent or
 - Text will be consumed by another agent, a translation pipeline, or a non-native English reader, and misparsing has a real cost.
 - You are writing a prompt, system message, or tool description and want to remove ambiguity before a model ever sees it.
 - You want a **before/after** comparison showing exactly which rule was violated and how the rewrite fixes it. Ask for it — the default output is the rewritten text alone (see Output Format).
+- People will read the text and act on it — patient information, help text, notifications, messages — and it must be clear without sounding cold or alarming. Use Warm mode.
 
-This skill is not for creative or marketing copy — STE is deliberately flat and literal. Do not apply it to text where voice, nuance, or persuasion is the point.
+This skill is not for creative or marketing copy — STE is deliberately flat and literal. Do not apply it to text where voice, nuance, or persuasion is the point. Warm mode makes plain text friendly, but it does not persuade or sell.
 
-## Two Modes
+## Three Modes
 
 Pick a mode before rewriting. If the user does not say which, infer it from the text type. Keep the choice internal unless the user asks for the rule table (see Output Format).
 
@@ -27,7 +28,11 @@ Pick a mode before rewriting. If the user does not say which, infer it from the 
 
 **STE-flavored** — READMEs, PR descriptions, changelogs, explanatory prose. Apply the structural rules in full and treat the lexical rules as advisory (see Core Rewrite Rules for that split). In practice that means keeping the sentence length caps, active voice, simple tenses, no phrasal verbs, no semicolons, no nominalization and no marketing adjectives, while dropping the one-word-one-meaning lockdown: prose needs some range, and a strict rewrite of prose reads as a personality transplant rather than a clarification.
 
-The two modes and the structural/lexical split are the same distinction seen from two directions. The split says which rules this skill can verify without ASD's dictionary. The modes say which of them to enforce for a given kind of text.
+**Warm** — plain text that people read and act on: patient information, help text, notifications and messages. Apply the structural rules as in Strict, then add the habits in Warm Mode below. Use it when the reader may be worried, unwell, or reading in a second language.
+
+Strict and STE-flavored, and the structural/lexical split, are the same distinction seen from two directions. The split says which rules this skill can verify without ASD's dictionary. The modes say which of them to enforce for a given kind of text. Warm adds a third reader: a person for whom tone is part of the meaning.
+
+One document can use two modes. Keep steps, doses, settings and safety warnings strict. Write the explanations around them in warm mode.
 
 ## Source and Scope
 
@@ -73,6 +78,38 @@ STE permits infinitive, imperative, simple present, simple past, simple future, 
 
 Aircraft manuals never need present perfect, so the exclusion costs the standard nothing. Other text is not always so lucky. "The job has completed" (and its output is available now) and "the job completed" (at some past point) are different statements, and status text frequently needs the first. **Where the compound form carries information the simple form cannot — current relevance, or a hedge as in "may have failed" — keep it and flag the departure.** Elsewhere, follow the rule.
 
+## Warm Mode
+
+Strict STE makes text clear, but a person can read it as cold. For a reader who is worried or unwell, tone is part of the meaning. A sentence that causes alarm can hide the advice that the reader needs. Warm mode keeps the clarity rules and adds a calm, human voice. It is an extension of this skill, not part of ASD-STE100.
+
+**Keep from strict mode:**
+
+- Sentence length: up to 20 words for steps and instructions, and up to 25 words for explanations.
+- One instruction per sentence, and a list for steps.
+- Active voice, as an advisory rule. A passive verb is fine when the actor is unknown or does not matter.
+- No semicolons.
+- Plain verbs, not phrasal verbs: "start", not "kick off".
+- One word for one meaning. Give a thing the same name every time.
+- Modality. Keep every hedge, and add no fact.
+
+**Add:**
+
+1. **Speak to the reader as "you".** Write "Take it with food", not "Patients should take it with food".
+2. **One calm reassurance, where the source supports it.** "This is common and usually settles within a few days." Say it once, next to the effect it is about.
+3. **A short "because".** A reason helps people follow advice: "Avoid alcohol, because it can make you more sleepy." Use only a reason that the source gives.
+4. **The everyday word first, then the exact word in brackets.** Write "low blood sugar (hypoglycemia)". Use the words that your readers use.
+5. **Calm words.** Words such as "deadly", "toxic", "dangerous" and "severe" can frighten more than the facts warrant. Say what happens and what to do. Write "people who have asthma", not "asthma sufferers".
+6. **Proportion.** Give the common, mild effects first. Say that the rare effects are rare, then give the exact action.
+
+**A real risk stays plain.** Warm mode never softens a serious risk, a limit or an emergency action. "Get emergency help at once if your throat swells" stays as it is. When a strong word is the exact truth, keep it and name it in the `Kept as-is:` line.
+
+**Relax:**
+
+- Present perfect is fine. "If you have already paid, ignore this message" is natural and exact.
+- The lexical rules stay advisory, as in STE-flavored mode. Choose the word that your readers know, even when a stricter word exists.
+
+**The linter.** Run `scripts/ste-lint.py --mode warm`. It applies every hard rule of strict mode. It keeps passive voice advisory and does not report present perfect. It adds an advisory `fear-word` rule that names a calmer word. A fear word never fails the run, because some risks need that word. The linter cannot check the warm habits themselves: "you", reassurance, reasons and everyday words. Check those by reading. See `examples/warm-mode.md` for worked examples.
+
 ## Scan Checklist
 
 These six habits cover most of what makes machine-written English hard to parse. Each one is mechanical: you can point at the exact word or punctuation mark that breaks the rule, with no judgment call. Scan for all six before you rewrite anything.
@@ -86,9 +123,9 @@ These six habits cover most of what makes machine-written English hard to parse.
 
 ## Process
 
-1. Pick the mode (Strict or STE-flavored). Say which only when the user asked for the rule table — see Output Format.
+1. Pick the mode (Strict, STE-flavored or Warm). Say which only when the user asked for the rule table — see Output Format.
 2. Read the input text once for meaning — do not start rewriting before you understand what it must still say afterward.
-3. Walk it sentence by sentence. Flag every rule violation from the Core Rewrite Rules tables and every habit from the Scan Checklist. In STE-flavored mode, flag the lexical rules but do not enforce them. For a mechanical first pass over the structural rules, run `scripts/ste-lint.py` (stdin or file args, `--json` for structured output); it checks semicolons, sentence length, phrasal verbs, nominalization, marketing adjectives, synonym rotation, dangling-conjunction in supported list items, passive voice, and compound tenses, and by design never flags hedges or modality. `--baseline N` tolerates N hard violations (for adopting on existing docs); `--disable rule1,rule2` silences named rules.
+3. Walk it sentence by sentence. Flag every rule violation from the Core Rewrite Rules tables and every habit from the Scan Checklist. In STE-flavored mode, flag the lexical rules but do not enforce them. For a mechanical first pass over the structural rules, run `scripts/ste-lint.py` (stdin or file args, `--json` for structured output); it checks semicolons, sentence length, phrasal verbs, nominalization, marketing adjectives, synonym rotation, dangling-conjunction in supported list items, passive voice, and compound tenses, and by design never flags hedges or modality. `--baseline N` tolerates N hard violations (for adopting on existing docs); `--disable rule1,rule2` silences named rules. For warm text, add `--mode warm`.
 4. Rewrite each flagged sentence to fix the violation while preserving the original meaning exactly. If a rewrite would drop necessary precision (a safety condition, a scope qualifier, a number), keep the longer phrasing and flag it instead of silently simplifying.
    - **Check modality before you commit to a rewrite.** Hedges ("may", "could", "sometimes", "is likely to") carry the author's confidence, and confidence is content. A shorter sentence that upgrades a hedge to a fact is not a simplification — it is a different claim. This is the most common way a well-intentioned STE rewrite goes wrong, because hedges are exactly what a length cap tempts you to cut.
    - Never add a fact the source did not state. A rewrite that reads better because it supplies a cause, a frequency, or a mechanism has stopped being a rewrite.
@@ -122,8 +159,10 @@ Follow the table with a one-line note on anything you deliberately did **not** s
 - Preserve every fact, condition, and scope qualifier in the original.
 - Preserve the strength of every hedge, and add no claim the source did not make.
 - Suggest a one-line glossary entry for domain terms that must stay.
+- In warm mode, add warmth ("you", a reassurance the source supports, a reason, an everyday word) without adding a fact.
 
 **Will not:**
+- Soften a real, serious risk, a limit, or an emergency action to make the text sound warm.
 - Reproduce ASD's official ~900-word dictionary as if it were memorized verbatim — always treat the official download as the source of truth for exact approved wording.
 - Simplify creative, marketing, or persuasive copy where voice and nuance are the point.
 - Silently drop a safety condition, exception, or scope qualifier to shorten a sentence — it will flag the trade-off instead.
@@ -136,4 +175,5 @@ Follow the table with a one-line note on anything you deliberately did **not** s
 
 - **`references/writing-rules.md`** — fuller summary of the 9 rule sections and dictionary structure, with citations to the official standard and secondary sources.
 - **`examples/before-after.md`** — worked examples, including official STE examples and agent-output examples built for this skill.
-- **`scripts/ste-lint.py`** — deterministic, stdlib-only linter for the structural rules, including dangling-conjunction in supported list items, plus a synonym-rotation check (one word, one meaning) scoped per file. Exit 1 when hard violations exceed `--baseline` (default 0); advisory findings (passive voice, compound tenses) never fail the run; `--disable` silences named rules. It never flags hedges or modality: those are content, not style, and `--selftest` asserts that "may have failed" passes clean.
+- **`examples/warm-mode.md`** — worked warm-mode examples: patient information, help text and messages.
+- **`scripts/ste-lint.py`** — deterministic, stdlib-only linter for the structural rules, including dangling-conjunction in supported list items, plus a synonym-rotation check (one word, one meaning) scoped per file. Exit 1 when hard violations exceed `--baseline` (default 0); advisory findings (passive voice, compound tenses) never fail the run; `--disable` silences named rules. It never flags hedges or modality: those are content, not style, and `--selftest` asserts that "may have failed" passes clean. `--mode warm` keeps every hard rule, drops the present-perfect check and adds an advisory fear-word check.

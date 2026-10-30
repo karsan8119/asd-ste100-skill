@@ -45,6 +45,46 @@ ASD-STE100 is a controlled natural language, first released in 1986 (as AECMA Do
 **Safety instructions**
 - Safety-critical instructions must open with a clear command or condition, not be buried mid-sentence.
 
+## Warm Mode: This Skill's Extension, Not Part of ASD-STE100
+
+ASD-STE100 has no warm mode. This skill adds one for plain text that people read and act on, such as patient information, help text, notifications and messages. The rules below are this skill's own. Several of them follow the NHS digital service manual, cited under Sources.
+
+**Kept from the standard:**
+- Up to 20 words in a sentence for steps and instructions, and up to 25 words for explanations.
+- One instruction per sentence, and a vertical list for steps.
+- Active voice, as an advisory rule.
+- No semicolons.
+- Plain verbs, not phrasal verbs.
+- One word for one meaning.
+- This skill's modality rule: keep every hedge, and add no fact.
+
+**Added for people:**
+- Speak to the reader as "you".
+- Give one calm reassurance where the source supports it, next to the effect it is about.
+- Give a short reason ("because …") when the source states one.
+- Put the everyday word first and the exact term in brackets: "high blood pressure (hypertension)".
+- Use calm words, and put the common effects before the rare ones.
+- Keep a real, serious risk plain, with the action: "Get emergency help at once if your throat swells."
+
+**Relaxed:**
+- Present perfect is allowed, because it is natural and exact in text for people.
+- The lexical rules stay advisory, as in STE-flavored mode.
+
+**Fear words.** These words frighten more than the facts warrant when a writer uses them loosely. `scripts/ste-lint.py --mode warm` reports them as advisory findings. They never fail the run, because a real risk sometimes needs them.
+
+| Word | Calmer choice |
+|---|---|
+| deadly, lethal, fatal, life-threatening | "serious", and say what to do |
+| toxic, poison, poisonous, poisoning | "harmful", or "too much" |
+| dangerous, hazardous | "harmful", or name the harm |
+| severe | "very bad", or name the sign |
+| alarming, frightening, terrifying, horrifying, horrific, scary | say what happens, in plain words |
+| catastrophic, devastating, disastrous | "serious" |
+| agonising, excruciating, unbearable | "very painful" |
+| crippling, debilitating | say what it stops a person from doing |
+| suffer, sufferer, victim | "have", or "a person with" |
+| critical | "important", or "serious" |
+
 ## Why This Skill Repurposes STE for Agent Output
 
 STE was designed to eliminate ambiguity for a reader who cannot ask a follow-up question — a technician on a tarmac, working from a manual, with no author to call. An AI agent parsing another agent's output, a tool description, or a system message is in the same position: no back-channel to resolve "does this passive-voice sentence mean the caller does X, or the callee does X?" The same rule set that protects an airline mechanic from a misread torque spec protects a downstream agent from a misread instruction.
@@ -57,3 +97,9 @@ STE was designed to eliminate ambiguity for a reader who cannot ask a follow-up 
 - [Simplified Technical English — Wikipedia](https://en.wikipedia.org/wiki/Simplified_Technical_English)
 - [TechScribe — ASD-STE100 Simplified Technical English](https://www.techscribe.co.uk/techw/asd-simplified-technical-english.htm)
 - [SKYbrary — Simplified Technical English (STE)](https://skybrary.aero/articles/simplified-technical-english-ste)
+
+For warm mode:
+
+- [NHS digital service manual — How we write](https://service-manual.nhs.uk/content/how-we-write): sentences of up to 20 words, plain English, and the plain term before the medical term.
+- [NHS digital service manual — Voice and tone](https://service-manual.nhs.uk/content/voice-and-tone): a voice that is neutral, factual, calm and reassuring.
+- [NHS digital service manual — A to Z of NHS health writing](https://service-manual.nhs.uk/content/a-to-z-of-nhs-health-writing): address users as "you", and say "having" a condition, not "suffering from" it.
